@@ -33,5 +33,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Build with a JDK 25 toolchain provisioned by Gradle
         run: |
-          java -version
-          ./gradlew build
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          "$JAVA_HOME/bin/java" -version
+          ./gradlew build -Porg.gradle.java.installations.auto-detect=false
+          ls "$HOME/.gradle/jdks"
