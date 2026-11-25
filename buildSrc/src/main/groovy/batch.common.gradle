@@ -32,7 +32,7 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.compilerArgs << '-parameters'
+    options.compilerArgs.addAll(['-parameters', '-Xlint:removal', '-Werror'])
 }
 
 tasks.named('test') {

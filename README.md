@@ -37,11 +37,11 @@ grep distributionUrl gradle/wrapper/gradle-wrapper.properties
 ├── buildSrc/                      # 모든 모듈 공통 빌드 설정 (아래 설명)
 ├── gradle/libs.versions.toml      # Spring Boot 버전 (한 곳에서만 관리, Dependabot이 갱신)
 ├── gradlew, gradle/wrapper/       # Gradle wrapper (배포 파일 체크섬 고정)
-├── settings.gradle                # 모듈 목록, JDK 자동 설치(foojay) 플러그인
-├── scripts/                       # 훅 검증 스크립트, CI용 스모크 테스트 (smoke-test.sh, test-hooks.sh)
+├── settings.gradle                # 모듈 목록과 모듈 이름 검사, JDK 자동 설치(foojay) 플러그인
+├── scripts/                       # 훅 스크립트와 CI 검사 스크립트 (아래 "빌드가 강제하는 규칙")
 ├── AGENTS.md                      # AI 코딩 에이전트 지침
 ├── .claude/settings.json          # Claude Code 훅 등록 (로직은 scripts/)
-├── .github/workflows/build.yml    # CI: 빌드, README 명령 스모크 테스트, 훅 테스트, ShellCheck, JDK 자동 설치 확인
+├── .github/workflows/build.yml    # CI: 빌드, 스모크 테스트, 훅과 규칙 테스트, ShellCheck, JDK 자동 설치, 검사 파일 변경 표시
 ├── .github/dependabot.yml         # 매주 Gradle 의존성, wrapper, GitHub Actions 업데이트 PR
 ├── .gitattributes                 # 줄바꿈 고정 (gradlew는 LF, gradlew.bat은 CRLF 그대로 저장)
 └── LICENSE                        # MIT
@@ -51,12 +51,14 @@ grep distributionUrl gradle/wrapper/gradle-wrapper.properties
 
 모듈 이름은 `batch-<역할>-<이름>` 형식입니다. 역할 접두사의 알파벳 순서가 의존 순서(아래층 → 위층)와 같아서, 폴더 목록과 IDE에서 모듈이 아래층부터 차례로 놓입니다.
 
-| 순서 | 역할 | 모듈 이름 | 예 | 의존할 수 있는 모듈 |
-|---|---|---|---|---|
-| 1 | 배치 인프라 | `batch-core` | `batch-core` (하나만 둠) | 없음 |
-| 2 | 업무 DB | `batch-db-<이름>` | `batch-db-main`, `batch-db-order` | 없음 |
-| 3 | 잡 그룹 | `batch-job-<이름>` | `batch-job-sample`, `batch-job-report` | `batch-core`, 쓰는 `batch-db-*` |
-| 4 | 실행 모듈 | `batch-launcher-<이름>` | `batch-launcher-cli`, `batch-launcher-web` | `batch-job-*` |
+| 순서 | 역할 | 모듈 이름 | 빌드 플러그인 | 예 | 의존할 수 있는 모듈 |
+|---|---|---|---|---|---|
+| 1 | 배치 인프라 | `batch-core` | `batch.core` | `batch-core` (하나만 둠) | 없음 |
+| 2 | 업무 DB | `batch-db-<이름>` | `batch.db` | `batch-db-main`, `batch-db-order` | 없음 |
+| 3 | 잡 그룹 | `batch-job-<이름>` | `batch.job` | `batch-job-sample`, `batch-job-report` | `batch-core`, 쓰는 `batch-db-*` |
+| 4 | 실행 모듈 | `batch-launcher-<이름>` | `batch.launcher` | `batch-launcher-cli`, `batch-launcher-web` | `batch-job-*` |
+
+이 규칙은 빌드가 검사합니다. 어기면 `./gradlew` 명령이 설정 단계에서 실패합니다(아래 "빌드가 강제하는 규칙").
 
 모듈 안의 이름도 같은 규칙을 따릅니다.
 
@@ -80,8 +82,11 @@ batch-core/src/main/
 │   ├── JobRunResult.java          # 실행 ID와 종료 코드
 │   └── UnknownJobException.java   # 등록되지 않은 잡 이름
 └── resources/
-    ├── core.properties          # 잡 메타 DB 접속 정보, 스키마 초기화 여부
+    ├── core.properties            # 잡 메타 DB 접속 정보, 스키마 초기화 여부
     └── logback.xml                # 두 실행 경로가 함께 쓰는 로그 설정
+
+batch-core/src/testFixtures/java/com/example/batch/core/
+└── StepTransactionRules.java      # 잡 그룹 테스트가 쓰는 검사: 모든 스텝이 업무 DB 트랜잭션으로 실행되는가
 ```
 
 **`batch-db-main`**: 업무 DB 하나의 접속 설정입니다. 업무 DB가 늘면 이 모듈을 복사해 하나 더 만듭니다.
@@ -111,7 +116,7 @@ batch-job-sample/src/
 ├── main/resources/
 │   └── job-sample.properties          # 입력 파일 위치, 청크 크기
 └── test/java/com/example/batch/job/sample/
-    ├── SampleJobTest.java             # 잡 실행, 재시작, 파라미터 검증
+    ├── SampleJobTest.java             # 잡 실행, 재시작, 파라미터 검증, 스텝 트랜잭션 검사
     ├── SampleFieldSetMapperTest.java
     └── SampleProcessorTest.java
 ```
@@ -121,8 +126,8 @@ batch-job-sample/src/
 ```
 batch-launcher-cli/src/
 ├── main/java/com/example/batch/launcher/cli/
-│   ├── CliLauncherApplication.java   # @SpringBootApplication, 잡 그룹 @Import
-│   └── JobLaunchingRunner.java    # --job.name으로 잡을 실행하고 결과를 종료 코드로 반환
+│   ├── CliLauncherApplication.java    # @SpringBootApplication, 잡 그룹 @Import
+│   └── JobLaunchingRunner.java        # --job.name으로 잡을 실행하고 결과를 종료 코드로 반환
 └── test/java/com/example/batch/launcher/cli/
     └── JobLaunchingRunnerTest.java
 ```
@@ -133,22 +138,34 @@ batch-launcher-cli/src/
 
 ```
 buildSrc/
-├── settings.gradle                                # 루트의 gradle/libs.versions.toml을 buildSrc에서도 쓰도록 연결
-├── build.gradle                                   # 카탈로그의 버전으로 Spring Boot Gradle 플러그인을 가져옴
-└── src/main/groovy/batch.spring-lib-deps.gradle   # 공통 설정 플러그인 (파일 이름이 곧 플러그인 id)
+├── settings.gradle                         # 루트의 gradle/libs.versions.toml을 buildSrc에서도 쓰도록 연결
+├── build.gradle                            # 카탈로그의 버전으로 Spring Boot Gradle 플러그인을 가져옴
+└── src/main/groovy/
+    ├── batch.common.gradle                 # 모든 역할의 공통 설정
+    ├── batch.core.gradle                   # 역할별 플러그인 (파일 이름이 곧 플러그인 id)
+    ├── batch.db.gradle
+    ├── batch.job.gradle
+    ├── batch.launcher.gradle
+    └── buildlogic/BatchModuleRules.groovy  # 모듈 이름과 의존 방향 검사
 ```
 
-`batch.spring-lib-deps` 플러그인이 모든 모듈의 공통 설정을 담습니다.
+| 플러그인 | 하는 일 |
+|---|---|
+| `batch.common` | `java-library`, Spring Boot BOM으로 버전 관리, JDK 25 toolchain, UTF-8, `-parameters`, 제거 예정 API 경고를 오류로 처리(`-Xlint:removal -Werror`), `spring-batch-core`와 테스트 의존성 |
+| `batch.core` | 공통 설정, 로그와 커넥션 풀, 잡 그룹 테스트용 test fixtures |
+| `batch.db` | 공통 설정, 커넥션 풀과 JDBC 드라이버 |
+| `batch.job` | 공통 설정, `batch-core` 의존과 test fixtures, 실행용 jar 모으기(`copyRuntime`) |
+| `batch.launcher` | 공통 설정, Spring Boot 플러그인과 starter |
 
-- `java-library`, Spring Boot BOM으로 라이브러리 버전 관리
-- JDK 25 toolchain, UTF-8, `-parameters` 컴파일 옵션
-- `spring-batch-core`와 테스트 의존성(JUnit, AssertJ, `spring-batch-test`)
-
-각 모듈의 `build.gradle`은 이 플러그인을 적용하고 자기 모듈에만 필요한 의존성을 더합니다. 모듈 `build.gradle`에는 라이브러리 버전을 쓰지 않습니다.
+각 모듈의 `build.gradle`은 역할 플러그인 하나를 적용하고, 그 모듈에만 필요한 의존성을 더합니다. 라이브러리 버전은 쓰지 않습니다.
 
 ```groovy
 plugins {
-    id 'batch.spring-lib-deps'
+    id 'batch.job'
+}
+
+dependencies {
+    implementation project(':batch-db-main')
 }
 ```
 
@@ -228,6 +245,7 @@ java -jar batch-launcher-cli/build/libs/batch-launcher-cli-0.1.0.jar --job.name=
 NEW=com.acme.settlement
 NEW_DIR=$(echo "$NEW" | tr . /)
 git grep -lz 'com\.example\.batch' | xargs -0 perl -pi -e "s/com\\.example\\.batch/$NEW/g"
+git grep -lz 'com/example/batch' | xargs -0 perl -pi -e "s#com/example/batch#$NEW_DIR#g"
 for d in */src/*/java/com/example/batch; do
   base=${d%/com/example/batch}
   mkdir -p "$base/$NEW_DIR"
@@ -237,7 +255,7 @@ find */src -type d -empty -delete
 ./gradlew build
 ```
 
-`buildSrc`의 `group`과 README의 실행 명령도 함께 바뀝니다.
+`buildSrc`의 `group`, README의 실행 명령, `scripts/`의 경로도 함께 바뀝니다.
 
 **2. 이름과 라이선스**
 
@@ -305,7 +323,7 @@ DB_MAIN_JDBC_URL=jdbc:postgresql://main-host/app java -jar ...
 3. 업무 DB에 쓰는 스텝이면 아래 "재시작 전략"을 따릅니다.
 4. 결과 데이터까지 단언하는 잡 테스트를 추가합니다. 재시작을 다루면 실패 후 재시작 테스트도 추가합니다.
 
-새 잡 그룹이 필요하면 `batch-job-sample`을 복사해 `settings.gradle`에 추가합니다. 그런 다음 `batch-launcher-cli`의 의존성과 `CliLauncherApplication`의 `@Import`에 그 그룹을 더합니다.
+새 잡 그룹이 필요하면 `batch-job-sample`을 `batch-job-<이름>`으로 복사해 `settings.gradle`에 추가합니다. 그런 다음 `batch-launcher-cli`의 의존성과 `CliLauncherApplication`의 `@Import`에 그 그룹을 더합니다. 복사한 잡 테스트에는 스텝 트랜잭션 검사가 이미 들어 있으니 지우지 마세요. 이름이나 의존을 규칙과 다르게 적으면 빌드가 알려 줍니다.
 
 ## 설계 결정
 
@@ -358,6 +376,30 @@ ChunkOrientedStep.doExecute()
 - [`ChunkOrientedStep` (Spring Batch v6.1.0)](https://github.com/spring-projects/spring-batch/blob/v6.1.0/spring-batch-core/src/main/java/org/springframework/batch/core/step/item/ChunkOrientedStep.java)
 - [`AbstractJobRepositoryFactoryBean` (Spring Batch v6.1.0)](https://github.com/spring-projects/spring-batch/blob/v6.1.0/spring-batch-core/src/main/java/org/springframework/batch/core/repository/support/AbstractJobRepositoryFactoryBean.java)
 - [`DataSourceTransactionManager` (Spring Framework v7.1.0)](https://github.com/spring-projects/spring-framework/blob/v7.1.0/spring-jdbc/src/main/java/org/springframework/jdbc/datasource/DataSourceTransactionManager.java)
+
+## 빌드가 강제하는 규칙
+
+AI 코딩 에이전트와 함께 개발하는 것을 전제로, 문서로만 두면 놓치기 쉬운 규칙을 빌드와 CI가 검사합니다. 모두 위반하면 실패하고, 메시지에 어긴 규칙이 나옵니다.
+
+| 규칙 | 검사하는 곳 | 실패하는 시점 |
+|---|---|---|
+| 모듈 이름이 `batch-core` 또는 `batch-<db\|job\|launcher>-<이름>` | `settings.gradle` | 모든 `./gradlew` 명령 |
+| 역할 플러그인과 모듈 이름이 맞음 | `BatchModuleRules` | 모든 `./gradlew` 명령 |
+| 의존 방향 (`batch-job-*`끼리 의존 금지, `batch-core`와 `batch-db-*`는 다른 모듈에 의존 금지 등) | `BatchModuleRules` | 모든 `./gradlew` 명령 |
+| Spring Boot는 `batch-launcher-*`에만 | `BatchModuleRules` | 모든 `./gradlew` 명령 |
+| 제거 예정 API를 쓰지 않음 | `batch.common` (`-Xlint:removal -Werror`) | 컴파일 |
+| 모든 스텝이 업무 DB 트랜잭션 관리자로 실행됨 | `StepTransactionRules` (잡 그룹 테스트) | 테스트 |
+| Gradle 경고가 없음 (다음 메이저 버전에서 깨질 설정) | CI `--warning-mode=fail` | CI |
+
+`scripts/test-build-rules.sh`가 위 규칙을 하나씩 일부러 어긴 사본을 만들어, 빌드가 실제로 실패하는지 CI에서 확인합니다.
+
+잡 그룹을 새로 만들면 그 그룹의 잡 테스트에 스텝 트랜잭션 검사를 한 줄 넣습니다. 업무 DB에 쓰지 않는 스텝은 이름을 넘겨 제외합니다.
+
+```java
+StepTransactionRules.assertStepsUseTransactionManager(context, "mainTransactionManager", Set.of());
+```
+
+**검사 자체가 바뀌는 경우**: 규칙을 정하는 파일(`buildSrc/`, `scripts/`, `.github/workflows/`, `.claude/`, `AGENTS.md`, `settings.gradle`, `.gitattributes`)을 바꾸는 PR에는 CI의 `guarded-paths` job이 경고를 남기고, 바뀐 파일 목록을 요약에 적습니다. 막히면 검사를 고쳐서 통과시키는 일을 사람이 알아차리게 하려는 장치입니다. 병합을 막지는 않으니, 경고가 보이면 그 파일들은 직접 읽고 판단하세요.
 
 ## AI 코딩 에이전트
 

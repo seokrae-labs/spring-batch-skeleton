@@ -1,18 +1,7 @@
 plugins {
-    id 'batch.spring-lib-deps'
+    id 'batch.job'
 }
 
 dependencies {
-    api project(':batch-core')
     implementation project(':batch-db-main')
-}
-
-tasks.register('copyRuntime', Copy) {
-    from tasks.named('jar')
-    from configurations.runtimeClasspath
-    into layout.buildDirectory.dir('runtime')
-}
-
-tasks.named('build') {
-    dependsOn 'copyRuntime'
 }

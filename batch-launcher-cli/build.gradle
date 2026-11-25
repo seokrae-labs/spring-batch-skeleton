@@ -1,9 +1,7 @@
 plugins {
-    id 'batch.spring-lib-deps'
-    id 'org.springframework.boot'
+    id 'batch.launcher'
 }
 
 dependencies {
     implementation project(':batch-job-sample')
-    implementation 'org.springframework.boot:spring-boot-starter'
 }
