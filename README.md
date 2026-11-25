@@ -215,8 +215,8 @@ ChunkOrientedStep.doExecute()
 - [Spring Batch Reference Documentation](https://docs.spring.io/spring-batch/reference/)
 - [Spring Boot System Requirements](https://docs.spring.io/spring-boot/system-requirements.html)
 - 정상혁, 『AI 에이전트와 스프링 배치를 활용한 배치 엔지니어링』, 위키북스, 2026.
-  - 모듈 구성(공통 배치 모듈, 잡 그룹 모듈, 실행 모듈), 잡 그룹 단위 `@Import` 구성, 빌드 설정, 두 가지 실행 방식(`CommandLineJobOperator`, `ApplicationRunner`)은 이 책 14장의 예제 구성을 따랐습니다.
-  - `AGENTS.md`의 규칙 상당수는 이 책 14.5.2절과 16.2.2절의 AGENTS.md 예시를 이 템플릿에 맞게 영어로 옮기고 줄여 재구성했습니다.
+  - 모듈 구성(공통 배치 모듈, 잡 그룹 모듈, 실행 모듈), 잡 그룹 단위 `@Import` 구성, 빌드 설정, 두 가지 실행 방식(`CommandLineJobOperator`, `ApplicationRunner`)은 이 책의 예제 구성을 따랐습니다.
+  - `AGENTS.md`의 규칙 상당수는 이 책의 AGENTS.md 예시를 이 템플릿에 맞게 영어로 옮기고 줄여 재구성했습니다.
   - 두 DB 분리에 따른 재시작 전략, 종료 코드 처리, 샘플 잡은 이 저장소에서 새로 설계했습니다.
 
 ## 라이선스
