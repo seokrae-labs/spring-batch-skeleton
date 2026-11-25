@@ -19,3 +19,19 @@ jobs:
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
       - run: ./gradlew build
+      - name: Smoke test README commands
+        run: scripts/smoke-test.sh
+      - name: Test hook scripts
+        run: scripts/test-hooks.sh
+      - name: ShellCheck
+        run: shellcheck scripts/*.sh
+
+  toolchain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build with a JDK 25 toolchain provisioned by Gradle
+        run: |
+          java -version
+          ./gradlew build

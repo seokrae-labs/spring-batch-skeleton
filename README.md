@@ -30,10 +30,10 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 ├── gradle/libs.versions.toml      # Spring Boot 버전 (한 곳에서만 관리, Dependabot이 갱신)
 ├── gradlew, gradle/wrapper/       # Gradle wrapper (9.5.1, 배포 파일 체크섬 고정)
 ├── settings.gradle                # 모듈 목록, JDK 자동 설치(foojay) 플러그인
-├── scripts/                       # 훅이 호출하는 검증 스크립트
+├── scripts/                       # 훅 검증 스크립트, CI용 스모크 테스트 (smoke-test.sh, test-hooks.sh)
 ├── AGENTS.md                      # AI 코딩 에이전트 지침
 ├── .claude/settings.json          # Claude Code 훅 등록 (로직은 scripts/)
-├── .github/workflows/build.yml    # CI: ./gradlew build
+├── .github/workflows/build.yml    # CI: 빌드, README 명령 스모크 테스트, 훅 테스트, ShellCheck, JDK 자동 설치 확인
 ├── .github/dependabot.yml         # 매주 Gradle 의존성, wrapper, GitHub Actions 업데이트 PR
 ├── .gitattributes                 # 줄바꿈 고정 (gradlew는 LF, *.bat은 CRLF)
 └── LICENSE                        # MIT
