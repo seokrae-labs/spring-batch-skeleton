@@ -18,21 +18,112 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 - 로컬에 JDK 25가 없으면 Gradle이 foojay toolchain resolver로 내려받습니다.
 - 25로 컴파일한 클래스는 더 낮은 JDK에서 실행되지 않습니다. 실행 서버의 JDK도 25 이상이어야 합니다.
 
-## 모듈 구조
+## 디렉터리 구조
 
 ```
 .
-├── AGENTS.md                 # AI 코딩 에이전트 지침
-├── .claude/settings.json     # Claude Code 훅 등록 (로직은 scripts/)
-├── .github/workflows/        # CI: ./gradlew build
-├── scripts/                  # 훅이 호출하는 검증 스크립트
-├── buildSrc/                 # 모든 모듈 공통 Gradle 플러그인
-├── gradle.properties         # Spring Boot 버전 (한 곳에서만 관리)
-├── batch-support/            # 배치 인프라, 잡 메타 DB, JobService
-├── main-db-support/          # 업무 DB 데이터 소스와 트랜잭션 관리자
-├── sample-job-group/         # 샘플 잡 그룹 (CSV 파일 → 업무 DB)
-└── admin-cli/                # Spring Boot 실행 jar
+├── settings.gradle            # 모듈 목록, JDK 자동 설치(foojay) 플러그인
+├── gradle.properties          # Spring Boot 버전 (한 곳에서만 관리)
+├── buildSrc/                  # 모든 모듈 공통 빌드 설정 (아래 설명)
+├── gradlew, gradle/wrapper/   # Gradle wrapper (9.5.1, 배포 파일 체크섬 고정)
+├── batch-support/             # 배치 인프라, 잡 메타 DB
+├── main-db-support/           # 업무 DB
+├── sample-job-group/          # 샘플 잡 그룹 (CSV 파일 → 업무 DB)
+├── admin-cli/                 # Spring Boot 실행 jar
+├── AGENTS.md                  # AI 코딩 에이전트 지침
+├── .claude/settings.json      # Claude Code 훅 등록 (로직은 scripts/)
+├── scripts/                   # 훅이 호출하는 검증 스크립트
+├── .github/workflows/build.yml  # CI: ./gradlew build
+├── .gitattributes             # 줄바꿈 고정 (gradlew는 LF, *.bat은 CRLF)
+└── LICENSE                    # MIT
 ```
+
+### 모듈별 파일
+
+**`batch-support`**: 모든 잡 그룹이 쓰는 배치 인프라입니다. 업무 DB는 알지 못합니다.
+
+```
+batch-support/src/main/
+├── java/com/example/batch/support/
+│   ├── BatchConfig.java           # @EnableBatchProcessing, 잡 메타 DB 데이터 소스와 트랜잭션 관리자, JobRegistry
+│   ├── JobService.java            # 잡 이름과 파라미터로 잡을 실행 (admin-cli가 사용)
+│   ├── JobRunResult.java          # 실행 ID와 종료 코드
+│   └── UnknownJobException.java   # 등록되지 않은 잡 이름
+└── resources/
+    ├── job-db.properties          # 잡 메타 DB 접속 정보, 스키마 초기화 여부
+    └── logback.xml                # 두 실행 경로가 함께 쓰는 로그 설정
+```
+
+**`main-db-support`**: 업무 DB 하나의 접속 설정입니다. 업무 DB가 늘면 이 모듈을 복사해 하나 더 만듭니다.
+
+```
+main-db-support/src/main/
+├── java/com/example/batch/maindb/
+│   └── MainDbConfig.java          # mainDataSource, mainTransactionManager
+└── resources/
+    ├── main-db.properties         # 업무 DB 접속 정보, 스키마 초기화 여부
+    └── main-db-schema-local.sql   # 로컬과 테스트용 샘플 테이블
+```
+
+**`sample-job-group`**: 샘플 잡 그룹입니다. 새 잡 그룹은 이 모듈을 복사해 만듭니다.
+
+```
+sample-job-group/src/
+├── main/java/com/example/batch/sample/
+│   ├── SampleJobGroup.java            # 이 그룹의 잡 설정과 업무 DB 설정을 @Import
+│   ├── SampleJobGroupBootstrap.java   # 배치 인프라 + 그룹 = 실행 컨텍스트 (CLI 실행, 잡 테스트의 진입점)
+│   ├── SampleJobConfig.java           # sampleJob: clearTargetDateStep → loadSampleRecordStep
+│   ├── ClearTargetDateTasklet.java    # 대상일 데이터 삭제 (재시작 때도 다시 실행)
+│   ├── SampleFieldSetMapper.java      # CSV 한 줄 → SampleRecord
+│   ├── SampleProcessor.java           # 금액이 0 이하인 행 걸러내기
+│   ├── SampleRecord.java              # 아이템 타입
+│   └── SampleSql.java                 # SQL 상수
+├── main/resources/
+│   └── sample-job.properties          # 입력 파일 위치, 청크 크기
+└── test/java/com/example/batch/sample/
+    ├── SampleJobTest.java             # 잡 실행, 재시작, 파라미터 검증
+    ├── SampleFieldSetMapperTest.java
+    └── SampleProcessorTest.java
+```
+
+**`admin-cli`**: Spring Boot 실행 jar입니다. 실행할 잡 그룹을 `@Import`합니다.
+
+```
+admin-cli/src/
+├── main/java/com/example/batch/admincli/
+│   ├── AdminCliApplication.java   # @SpringBootApplication, 잡 그룹 @Import
+│   └── JobLaunchingRunner.java    # --job.name으로 잡을 실행하고 결과를 종료 코드로 반환
+└── test/java/com/example/batch/admincli/
+    └── JobLaunchingRunnerTest.java
+```
+
+### buildSrc
+
+`buildSrc`는 애플리케이션 모듈이 아니라 Gradle이 쓰는 빌드 설정 폴더입니다. Gradle은 빌드를 시작할 때 이 폴더를 먼저 컴파일하고, 그 결과를 모든 모듈의 빌드 스크립트에서 쓸 수 있게 합니다. `settings.gradle`에 등록하지 않으며, 실행 jar에도 들어가지 않습니다.
+
+```
+buildSrc/
+├── build.gradle                                   # gradle.properties의 Spring Boot 버전으로 Boot Gradle 플러그인을 가져옴
+└── src/main/groovy/batch.spring-lib-deps.gradle   # 공통 설정 플러그인 (파일 이름이 곧 플러그인 id)
+```
+
+`batch.spring-lib-deps` 플러그인이 모든 모듈의 공통 설정을 담습니다.
+
+- `java-library`, Spring Boot BOM으로 라이브러리 버전 관리
+- JDK 25 toolchain, UTF-8, `-parameters` 컴파일 옵션
+- `spring-batch-core`와 테스트 의존성(JUnit, AssertJ, `spring-batch-test`)
+
+각 모듈의 `build.gradle`은 이 플러그인을 적용하고 자기 모듈에만 필요한 의존성을 더합니다. 모듈 `build.gradle`에는 라이브러리 버전을 쓰지 않습니다.
+
+```groovy
+plugins {
+    id 'batch.spring-lib-deps'
+}
+```
+
+`buildSrc`를 고치면 모든 모듈의 빌드 설정이 함께 바뀝니다.
+
+### 모듈 의존 방향
 
 의존 방향은 위에서 아래로 한 방향입니다.
 
