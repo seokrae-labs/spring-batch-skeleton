@@ -7,13 +7,21 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 
 ## 요구 사항
 
-| 항목 | 버전 |
+| 항목 | 버전이 정해지는 곳 |
 |---|---|
 | JDK | 25 (빌드와 실행 모두) |
-| Gradle | 9.9.2 (wrapper 포함) |
-| Spring Boot | 4.2.0 (`gradle/libs.versions.toml`) |
-| Spring Batch | 6.1.0 (Spring Boot BOM이 관리) |
+| Spring Boot | `gradle/libs.versions.toml` |
+| Spring Batch, Spring Framework 등 | Spring Boot BOM이 정함 |
+| Gradle | `gradle/wrapper/gradle-wrapper.properties` (wrapper 포함) |
 | jq | 훅 스크립트 `check-java.sh`에서 사용 (선택) |
+
+버전은 Dependabot이 매주 확인해 PR로 올립니다. 릴리즈마다 그 시점의 버전은 릴리즈 노트에 적습니다. 지금 쓰는 버전은 이렇게 확인합니다.
+
+```bash
+grep spring-boot gradle/libs.versions.toml
+grep distributionUrl gradle/wrapper/gradle-wrapper.properties
+./gradlew -q :batch-core:dependencyInsight --dependency spring-batch-core --configuration runtimeClasspath
+```
 
 - 로컬에 JDK 25가 없으면 Gradle이 foojay toolchain resolver로 내려받습니다.
 - 25로 컴파일한 클래스는 더 낮은 JDK에서 실행되지 않습니다. 실행 서버의 JDK도 25 이상이어야 합니다.
@@ -28,14 +36,14 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 ├── batch-launcher-cli/            # Spring Boot 실행 jar
 ├── buildSrc/                      # 모든 모듈 공통 빌드 설정 (아래 설명)
 ├── gradle/libs.versions.toml      # Spring Boot 버전 (한 곳에서만 관리, Dependabot이 갱신)
-├── gradlew, gradle/wrapper/       # Gradle wrapper (9.9.2, 배포 파일 체크섬 고정)
+├── gradlew, gradle/wrapper/       # Gradle wrapper (배포 파일 체크섬 고정)
 ├── settings.gradle                # 모듈 목록, JDK 자동 설치(foojay) 플러그인
 ├── scripts/                       # 훅 검증 스크립트, CI용 스모크 테스트 (smoke-test.sh, test-hooks.sh)
 ├── AGENTS.md                      # AI 코딩 에이전트 지침
 ├── .claude/settings.json          # Claude Code 훅 등록 (로직은 scripts/)
 ├── .github/workflows/build.yml    # CI: 빌드, README 명령 스모크 테스트, 훅 테스트, ShellCheck, JDK 자동 설치 확인
 ├── .github/dependabot.yml         # 매주 Gradle 의존성, wrapper, GitHub Actions 업데이트 PR
-├── .gitattributes                 # 줄바꿈 고정 (gradlew는 LF, *.bat은 CRLF)
+├── .gitattributes                 # 줄바꿈 고정 (gradlew는 LF, gradlew.bat은 CRLF 그대로 저장)
 └── LICENSE                        # MIT
 ```
 
@@ -345,7 +353,7 @@ ChunkOrientedStep.doExecute()
 
 커밋 결과를 알 수 없는 경우(커밋 중 연결이 끊기는 등), Spring Batch는 스텝을 `UNKNOWN`으로 표시하고 사람이 확인하기 전에는 재시작하지 않습니다.
 
-근거 소스:
+근거 소스 (이 분석을 확인한 버전):
 
 - [`ChunkOrientedStep` (Spring Batch v6.1.0)](https://github.com/spring-projects/spring-batch/blob/v6.1.0/spring-batch-core/src/main/java/org/springframework/batch/core/step/item/ChunkOrientedStep.java)
 - [`AbstractJobRepositoryFactoryBean` (Spring Batch v6.1.0)](https://github.com/spring-projects/spring-batch/blob/v6.1.0/spring-batch-core/src/main/java/org/springframework/batch/core/repository/support/AbstractJobRepositoryFactoryBean.java)

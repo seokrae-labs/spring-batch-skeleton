@@ -3,3 +3,4 @@
 *.cmd text eol=crlf
 *.jar binary
 gradlew text eol=lf
+gradlew.bat -text
