@@ -8,3 +8,13 @@ include 'batch-core'
 include 'batch-db-main'
 include 'batch-job-sample'
 include 'batch-launcher-cli'
+
+gradle.settingsEvaluated { settings ->
+    def modulePattern = ~/batch-(core|(db|job|launcher)-[a-z0-9]+(-[a-z0-9]+)*)/
+    def invalid = settings.rootProject.children.collect { it.name }.findAll { !(it ==~ modulePattern) }
+    if (!invalid.isEmpty()) {
+        throw new GradleException(
+                "Module names must follow batch-core or batch-<db|job|launcher>-<name>: ${invalid}. " +
+                        'See README, section "모듈 이름 규칙".')
+    }
+}

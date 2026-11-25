@@ -1,0 +1,20 @@
+plugins {
+    id 'batch.common'
+}
+
+buildlogic.BatchModuleRules.enforce(project, 'job')
+
+dependencies {
+    api project(':batch-core')
+    testImplementation testFixtures(project(':batch-core'))
+}
+
+tasks.register('copyRuntime', Copy) {
+    from tasks.named('jar')
+    from configurations.runtimeClasspath
+    into layout.buildDirectory.dir('runtime')
+}
+
+tasks.named('build') {
+    dependsOn 'copyRuntime'
+}

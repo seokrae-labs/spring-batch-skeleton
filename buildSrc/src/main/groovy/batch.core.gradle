@@ -1,0 +1,16 @@
+plugins {
+    id 'batch.common'
+    id 'java-test-fixtures'
+}
+
+buildlogic.BatchModuleRules.enforce(project, 'core')
+
+dependencies {
+    api 'org.slf4j:slf4j-api'
+    implementation 'ch.qos.logback:logback-classic'
+    implementation 'com.zaxxer:HikariCP'
+    runtimeOnly 'com.h2database:h2'
+
+    testFixturesApi 'org.springframework:spring-context'
+    testFixturesImplementation 'org.springframework.batch:spring-batch-core'
+}

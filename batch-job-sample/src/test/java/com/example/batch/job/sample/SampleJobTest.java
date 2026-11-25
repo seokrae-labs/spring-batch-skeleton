@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import com.example.batch.core.StepTransactionRules;
 import java.util.List;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,7 @@ import org.springframework.batch.test.JobOperatorTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -43,6 +46,12 @@ class SampleJobTest {
   @Autowired
   @Qualifier("mainDataSource")
   DataSource mainDataSource;
+
+  @Test
+  @DisplayName("이 그룹의 모든 스텝은 업무 DB 트랜잭션 안에서 실행된다")
+  void everyStepRunsInBusinessTransaction(@Autowired ApplicationContext context) {
+    StepTransactionRules.assertStepsUseTransactionManager(context, "mainTransactionManager", Set.of());
+  }
 
   @Test
   @DisplayName("대상일 파일을 읽어 금액이 양수인 행만 업무 DB에 쓴다")
@@ -72,7 +81,7 @@ class SampleJobTest {
     JobExecution restarted = testUtils.startJob(params);
 
     assertThat(restarted.getStatus()).isEqualTo(BatchStatus.COMPLETED);
-    assertThat(restarted.getJobInstanceId()).isEqualTo(first.getJobInstanceId());
+    assertThat(restarted.getJobInstance().getId()).isEqualTo(first.getJobInstance().getId());
     assertThat(itemKeys(targetDate)).containsExactly("a", "b", "c", "d", "e");
   }
 

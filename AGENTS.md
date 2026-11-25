@@ -15,9 +15,8 @@ Module names follow `batch-<role>-<name>`. The roles sort alphabetically in depe
 | `batch-launcher-<name>` | a way to start jobs: `<Name>LauncherApplication` | `batch-job-*` modules |
 
 - Packages are `com.example.batch.<role>.<name>` (e.g. `com.example.batch.db.main`). Property files and keys are `<role>-<name>.properties` / `<role>-<name>.*` (`core.*` for `batch-core`).
-- Job group modules never depend on each other.
-- Spring Boot appears only in `batch-launcher-cli`.
-- The Spring Boot version is set once in `gradle/libs.versions.toml`; shared dependencies are declared once in `buildSrc`. Module build files never contain versions.
+- Each module applies exactly one role plugin (`batch.core`, `batch.db`, `batch.job`, `batch.launcher`) and adds only its own dependencies. Module build files never contain versions; the Spring Boot version lives in `gradle/libs.versions.toml`.
+- The build enforces the module names, the dependency directions in the table, and that Spring Boot is used only by `batch-launcher-*`. If the build reports a module rule violation, change the code or the dependency, not the rule.
 
 ## Adding a job
 
@@ -26,13 +25,15 @@ Module names follow `batch-<role>-<name>`. The roles sort alphabetically in depe
 3. If the job writes to a business database, follow "Restart safety" below.
 4. Add a test that runs the job through the group's `*JobGroupBootstrap` and checks the rows it wrote.
 
+A new job group is a copy of `batch-job-sample` named `batch-job-<name>`. Keep the `StepTransactionRules.assertStepsUseTransactionManager(...)` test in it.
+
 A new business database gets its own `batch-db-*` module, imported by the `*JobGroup` of every group that uses it.
 
 ## Two databases
 
 Every group that uses a business database has two `DataSource` beans (`jobMetaDataSource`, `mainDataSource`) and two transaction managers. Always inject them by name with `@Qualifier`.
 
-A step that writes to the business database must set `.transactionManager(...)` to that database's manager. If it is left out, the step runs without a transaction and nothing reports it.
+A step that writes to the business database must set `.transactionManager(...)` to that database's manager. If it is left out, Spring Batch silently runs the step without a transaction; the `StepTransactionRules` test in each job group catches it. Exempt a step only when it does not write to the database.
 
 ## Restart safety
 
@@ -50,6 +51,10 @@ Steps that write to a business database are therefore rerun from the start on re
 - `scripts/check-java.sh` rejects `@Autowired`, `@Inject` and `@Resource` in main code (use constructor injection) and test methods without `@DisplayName`.
 - In `@SpringBatchTest` classes, do not write helper methods that return `JobExecution` or `StepExecution`. The test listeners mistake them for execution factories and call them with no arguments.
 
+- The compiler treats use of APIs marked for removal as an error (`-Xlint:removal -Werror`). Use the replacement API instead of suppressing the warning.
+
 ## Checks
 
 Claude Code runs `scripts/check-java.sh` after each edit and `scripts/run-tests.sh` before finishing. Fix what they report; do not disable them.
+
+Do not change the files that define the checks (`buildSrc/`, `scripts/`, `.github/workflows/`, `.claude/`, `settings.gradle`, `.gitattributes`, this file) to make a failing check pass. If a rule blocks a change that looks correct, stop and ask the maintainer. CI flags every pull request that touches these files.

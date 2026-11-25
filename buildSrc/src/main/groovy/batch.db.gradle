@@ -1,0 +1,10 @@
+plugins {
+    id 'batch.common'
+}
+
+buildlogic.BatchModuleRules.enforce(project, 'db')
+
+dependencies {
+    implementation 'com.zaxxer:HikariCP'
+    runtimeOnly 'com.h2database:h2'
+}
