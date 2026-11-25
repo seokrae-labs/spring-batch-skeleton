@@ -11,7 +11,7 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 |---|---|
 | JDK | 25 (빌드와 실행 모두) |
 | Gradle | 9.5.1 (wrapper 포함) |
-| Spring Boot | 4.1.2 (`gradle.properties`) |
+| Spring Boot | 4.1.2 (`gradle/libs.versions.toml`) |
 | Spring Batch | 6.0.6 (Spring Boot BOM이 관리) |
 | jq | 훅 스크립트 `check-java.sh`에서 사용 (선택) |
 
@@ -23,7 +23,7 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 ```
 .
 ├── settings.gradle            # 모듈 목록, JDK 자동 설치(foojay) 플러그인
-├── gradle.properties          # Spring Boot 버전 (한 곳에서만 관리)
+├── gradle/libs.versions.toml  # Spring Boot 버전 (한 곳에서만 관리, Dependabot이 갱신)
 ├── buildSrc/                  # 모든 모듈 공통 빌드 설정 (아래 설명)
 ├── gradlew, gradle/wrapper/   # Gradle wrapper (9.5.1, 배포 파일 체크섬 고정)
 ├── batch-support/             # 배치 인프라, 잡 메타 DB
@@ -34,6 +34,7 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 ├── .claude/settings.json      # Claude Code 훅 등록 (로직은 scripts/)
 ├── scripts/                   # 훅이 호출하는 검증 스크립트
 ├── .github/workflows/build.yml  # CI: ./gradlew build
+├── .github/dependabot.yml     # 매주 Gradle 의존성, wrapper, GitHub Actions 업데이트 PR
 ├── .gitattributes             # 줄바꿈 고정 (gradlew는 LF, *.bat은 CRLF)
 └── LICENSE                    # MIT
 ```
@@ -103,7 +104,8 @@ admin-cli/src/
 
 ```
 buildSrc/
-├── build.gradle                                   # gradle.properties의 Spring Boot 버전으로 Boot Gradle 플러그인을 가져옴
+├── settings.gradle                                # 루트의 gradle/libs.versions.toml을 buildSrc에서도 쓰도록 연결
+├── build.gradle                                   # 카탈로그의 버전으로 Spring Boot Gradle 플러그인을 가져옴
 └── src/main/groovy/batch.spring-lib-deps.gradle   # 공통 설정 플러그인 (파일 이름이 곧 플러그인 id)
 ```
 

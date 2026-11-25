@@ -14,7 +14,7 @@ If a task needs one of these rules to change, ask the maintainer before changing
 
 - Job group modules never depend on each other.
 - Spring Boot appears only in `admin-cli`.
-- The Spring Boot version is set once in `gradle.properties`; shared dependencies are declared once in `buildSrc`.
+- The Spring Boot version is set once in `gradle/libs.versions.toml`; shared dependencies are declared once in `buildSrc`. Module build files never contain versions.
 
 ## Adding a job
 
