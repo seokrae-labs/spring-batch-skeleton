@@ -1,0 +1,10 @@
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'spring-batch-skeleton'
+
+include 'batch-support'
+include 'main-db-support'
+include 'sample-job-group'
+include 'admin-cli'

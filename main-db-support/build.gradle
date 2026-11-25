@@ -1,0 +1,8 @@
+plugins {
+    id 'batch.spring-lib-deps'
+}
+
+dependencies {
+    implementation 'com.zaxxer:HikariCP'
+    runtimeOnly 'com.h2database:h2'
+}

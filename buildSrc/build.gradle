@@ -1,0 +1,15 @@
+plugins {
+    id 'groovy-gradle-plugin'
+}
+
+repositories {
+    mavenCentral()
+    gradlePluginPortal()
+}
+
+def props = new Properties()
+file("${projectDir}/../gradle.properties").withInputStream { props.load(it) }
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-gradle-plugin:${props.springBootVersion}"
+}

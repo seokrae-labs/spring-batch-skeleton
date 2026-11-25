@@ -1,0 +1,10 @@
+plugins {
+    id 'batch.spring-lib-deps'
+}
+
+dependencies {
+    api 'org.slf4j:slf4j-api'
+    implementation 'ch.qos.logback:logback-classic'
+    implementation 'com.zaxxer:HikariCP'
+    runtimeOnly 'com.h2database:h2'
+}
