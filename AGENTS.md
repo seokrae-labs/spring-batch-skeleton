@@ -29,7 +29,7 @@ If a task seems to require breaking a rule below, stop and ask the maintainer fi
 ## Writing steps
 
 - Inject beans through constructors. Field and setter injection are not allowed outside tests.
-- Name every `DataSource` and `PlatformTransactionManager` explicitly with `@Qualifier`; there are always at least two of each.
+- Inject `DataSource` and `PlatformTransactionManager` with `@Qualifier` whenever more than one bean of that type exists, which is the case in every group that uses a business database.
 - A step that writes to a business database must call `.transactionManager(...)` with that database's manager. Without it, Spring Batch silently uses a non-transactional one.
 - `@StepScope` / `@JobScope` bean methods return the concrete class (e.g. `FlatFileItemReader<T>`), not the interface.
 - Non-bean factory methods start with `build`.
@@ -39,7 +39,7 @@ If a task seems to require breaking a rule below, stop and ask the maintainer fi
 
 ## Restart safety (important)
 
-The job repository and the business database are different databases, so a chunk's metadata is committed before its business data. A crash between the two commits makes a restart skip that chunk.
+The job repository and the business database are different databases, so a chunk's metadata is committed before its business data. If the process dies between the two commits and the reader saved its position, a restart skips that chunk.
 
 So every step that writes to a business database must be safe to rerun from the beginning:
 

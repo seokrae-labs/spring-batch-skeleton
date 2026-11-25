@@ -19,12 +19,12 @@ esac
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
-code_lines() {
-  grep -vE '^[[:space:]]*(//|/?\*)' "$1"
+matching_code_lines() {
+  grep -nE "$1" "$2" | grep -vE '^[0-9]+:[[:space:]]*(//|/?\*)'
 }
 
 if [[ "$file" == */src/main/* ]]; then
-  if code_lines "$file" | grep -nE '@([A-Za-z_][A-Za-z0-9_]*\.)*(Autowired|Inject|Resource)([^A-Za-z0-9_]|$)' >&2; then
+  if matching_code_lines '@([A-Za-z_][A-Za-z0-9_]*\.)*(Autowired|Inject|Resource)([^A-Za-z0-9_]|$)' "$file" >&2; then
     echo "$file: use constructor injection, remove @Autowired/@Inject/@Resource (AGENTS.md)" >&2
     exit 2
   fi
@@ -32,8 +32,8 @@ fi
 
 case "$file" in
   */src/test/*Test.java | */src/test/*Tests.java | */src/test/*IT.java)
-    tests=$(code_lines "$file" | grep -cE '@(Test|ParameterizedTest|RepeatedTest|TestFactory)([^A-Za-z0-9_]|$)')
-    names=$(code_lines "$file" | grep -cE '@DisplayName([^A-Za-z0-9_]|$)')
+    tests=$(matching_code_lines '@(Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)([^A-Za-z0-9_]|$)' "$file" | wc -l | tr -d ' ')
+    names=$(matching_code_lines '@DisplayName([^A-Za-z0-9_]|$)' "$file" | wc -l | tr -d ' ')
     if (( tests > names )); then
       echo "$file: $tests test methods but only $names @DisplayName (AGENTS.md)" >&2
       exit 2

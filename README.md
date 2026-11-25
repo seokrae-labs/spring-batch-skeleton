@@ -93,7 +93,7 @@ java -jar admin-cli/build/libs/admin-cli-0.1.0.jar --job.name=sampleJob \
 | 종료 코드 | CommandLineJobOperator | admin-cli |
 |---|---|---|
 | 0 | 잡이 `COMPLETED` | 잡이 `COMPLETED` |
-| 1 | 그 밖의 종료 상태 | 그 밖의 종료 상태 |
+| 1 | 그 밖의 종료 상태, 등록되지 않은 잡 이름 | 그 밖의 종료 상태, 필수 파라미터 누락이나 잘못된 인자 같은 예외 |
 | 2 | 잡 구성 클래스를 찾지 못함 | 잡 이름이 없거나 등록되지 않은 이름 |
 
 ## 설정
@@ -106,6 +106,8 @@ java -jar admin-cli/build/libs/admin-cli-0.1.0.jar --job.name=sampleJob \
 | `logback.xml` | batch-support | 로그 형식과 레벨 |
 
 기본값은 두 DB 모두 H2 메모리 DB입니다. 프로세스가 끝나면 데이터가 사라집니다.
+
+`logback.xml`은 두 실행 경로가 함께 쓰도록 `batch-support`에 하나만 둡니다. 실행 모듈마다 로그 설정을 따로 두려면 이 파일을 옮기세요. 클래스패스에 `logback.xml`이 둘 이상 있으면 Logback이 경고를 내고 그중 하나를 고릅니다.
 
 시스템 속성과 환경 변수가 속성 파일보다 우선합니다. `admin-cli`에서는 `--이름=값` 형식의 명령행 인자도 씁니다.
 
@@ -197,7 +199,8 @@ ChunkOrientedStep.doExecute()
 | 작업 종료 전 | `scripts/run-tests.sh` | 전체 테스트 실행 |
 
 - `check-java.sh`는 `jq`가 없으면 검사를 건너뜁니다. `run-tests.sh`는 `jq` 없이 항상 테스트를 실행합니다.
-- `run-tests.sh`는 테스트가 통과할 때까지 매번 실행합니다. 연속 차단 횟수는 Claude Code가 제한합니다.
+- `run-tests.sh`는 마지막으로 테스트가 통과한 뒤 코드가 바뀌었을 때만 테스트를 실행합니다. 커밋, 작업 트리 변경, `HEAD` 이동을 모두 변경으로 봅니다. git이 없으면 매번 실행합니다.
+- 테스트가 실패하면 통과할 때까지 작업 종료를 막습니다. Claude Code의 연속 차단 상한은 Claude가 도구를 호출할 때마다 초기화됩니다. 그래서 JDK 설치나 의존성 다운로드처럼 코드 밖의 원인으로 계속 실패하면, 사람이 멈추거나 원인을 고쳐야 합니다.
 - `check-java.sh`는 줄 단위 문자열 검사입니다. 주석 줄은 건너뛰지만, 클래스에 붙은 `@DisplayName`도 개수에 포함하는 등 한계가 있습니다. 정교한 규칙은 ArchUnit 테스트로 옮기세요.
 - 다른 에이전트에서도 같은 스크립트를 훅으로 등록해 쓸 수 있습니다. 이 저장소에는 Claude Code 설정만 포함했습니다.
 
@@ -212,9 +215,9 @@ ChunkOrientedStep.doExecute()
 - [Spring Batch Reference Documentation](https://docs.spring.io/spring-batch/reference/)
 - [Spring Boot System Requirements](https://docs.spring.io/spring-boot/system-requirements.html)
 - 정상혁, 『AI 에이전트와 스프링 배치를 활용한 배치 엔지니어링』, 위키북스, 2026.
-  - 이 템플릿의 모듈 분리 방식은 이 책 14장의 예제 구성을 참고했습니다. 공통 배치 모듈, 잡 그룹 모듈, 실행 모듈로 나누고, 잡 그룹 단위로 컨텍스트를 `@Import`해 구성하는 방식입니다.
-  - 코드와 문서는 이 저장소에서 새로 작성했고, 책의 본문을 옮기지 않았습니다.
-  - 프레임워크 API가 형태를 정하는 설정 코드(`@EnableJdbcJobRepository` 선언, Gradle 공통 플러그인, 의존성 복사 태스크 등)는 책의 예제와 비슷할 수 있습니다.
+  - 모듈 구성(공통 배치 모듈, 잡 그룹 모듈, 실행 모듈), 잡 그룹 단위 `@Import` 구성, 빌드 설정, 두 가지 실행 방식(`CommandLineJobOperator`, `ApplicationRunner`)은 이 책 14장의 예제 구성을 따랐습니다.
+  - `AGENTS.md`의 규칙 상당수는 이 책 14.5.2절과 16.2.2절의 AGENTS.md 예시를 이 템플릿에 맞게 영어로 옮기고 줄여 재구성했습니다.
+  - 두 DB 분리에 따른 재시작 전략, 종료 코드 처리, 샘플 잡은 이 저장소에서 새로 설계했습니다.
 
 ## 라이선스
 
