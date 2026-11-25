@@ -10,9 +10,9 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 | 항목 | 버전 |
 |---|---|
 | JDK | 25 (빌드와 실행 모두) |
-| Gradle | 9.5.1 (wrapper 포함) |
-| Spring Boot | 4.1.2 (`gradle/libs.versions.toml`) |
-| Spring Batch | 6.0.6 (Spring Boot BOM이 관리) |
+| Gradle | 9.9.2 (wrapper 포함) |
+| Spring Boot | 4.2.0 (`gradle/libs.versions.toml`) |
+| Spring Batch | 6.1.0 (Spring Boot BOM이 관리) |
 | jq | 훅 스크립트 `check-java.sh`에서 사용 (선택) |
 
 - 로컬에 JDK 25가 없으면 Gradle이 foojay toolchain resolver로 내려받습니다.
@@ -28,7 +28,7 @@ GitHub에서 **Use this template**으로 새 저장소를 만들어 시작하세
 ├── batch-launcher-cli/            # Spring Boot 실행 jar
 ├── buildSrc/                      # 모든 모듈 공통 빌드 설정 (아래 설명)
 ├── gradle/libs.versions.toml      # Spring Boot 버전 (한 곳에서만 관리, Dependabot이 갱신)
-├── gradlew, gradle/wrapper/       # Gradle wrapper (9.5.1, 배포 파일 체크섬 고정)
+├── gradlew, gradle/wrapper/       # Gradle wrapper (9.9.2, 배포 파일 체크섬 고정)
 ├── settings.gradle                # 모듈 목록, JDK 자동 설치(foojay) 플러그인
 ├── scripts/                       # 훅 검증 스크립트, CI용 스모크 테스트 (smoke-test.sh, test-hooks.sh)
 ├── AGENTS.md                      # AI 코딩 에이전트 지침
@@ -347,9 +347,9 @@ ChunkOrientedStep.doExecute()
 
 근거 소스:
 
-- [`ChunkOrientedStep` (Spring Batch v6.0.6)](https://github.com/spring-projects/spring-batch/blob/v6.0.6/spring-batch-core/src/main/java/org/springframework/batch/core/step/item/ChunkOrientedStep.java)
-- [`AbstractJobRepositoryFactoryBean` (Spring Batch v6.0.6)](https://github.com/spring-projects/spring-batch/blob/v6.0.6/spring-batch-core/src/main/java/org/springframework/batch/core/repository/support/AbstractJobRepositoryFactoryBean.java)
-- [`DataSourceTransactionManager` (Spring Framework v7.0.10)](https://github.com/spring-projects/spring-framework/blob/v7.0.10/spring-jdbc/src/main/java/org/springframework/jdbc/datasource/DataSourceTransactionManager.java)
+- [`ChunkOrientedStep` (Spring Batch v6.1.0)](https://github.com/spring-projects/spring-batch/blob/v6.1.0/spring-batch-core/src/main/java/org/springframework/batch/core/step/item/ChunkOrientedStep.java)
+- [`AbstractJobRepositoryFactoryBean` (Spring Batch v6.1.0)](https://github.com/spring-projects/spring-batch/blob/v6.1.0/spring-batch-core/src/main/java/org/springframework/batch/core/repository/support/AbstractJobRepositoryFactoryBean.java)
+- [`DataSourceTransactionManager` (Spring Framework v7.1.0)](https://github.com/spring-projects/spring-framework/blob/v7.1.0/spring-jdbc/src/main/java/org/springframework/jdbc/datasource/DataSourceTransactionManager.java)
 
 ## AI 코딩 에이전트
 
