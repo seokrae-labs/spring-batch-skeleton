@@ -1,9 +1,0 @@
-plugins {
-    id 'batch.spring-lib-deps'
-    id 'org.springframework.boot'
-}
-
-dependencies {
-    implementation project(':sample-job-group')
-    implementation 'org.springframework.boot:spring-boot-starter'
-}

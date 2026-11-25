@@ -4,7 +4,7 @@ plugins {
 
 rootProject.name = 'spring-batch-skeleton'
 
-include 'batch-support'
-include 'main-db-support'
-include 'sample-job-group'
-include 'admin-cli'
+include 'batch-core'
+include 'batch-db-main'
+include 'batch-job-sample'
+include 'batch-launcher-cli'

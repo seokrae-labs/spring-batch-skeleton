@@ -5,15 +5,18 @@ If a task needs one of these rules to change, ask the maintainer before changing
 
 ## Modules
 
+Module names follow `batch-<role>-<name>`. The roles sort alphabetically in dependency order, bottom layer first.
+
 | Module | Holds | May depend on |
 |---|---|---|
-| `admin-cli` | Spring Boot launcher (`JobLaunchingRunner`) | job group modules |
-| `*-job-group` | jobs of one group and their readers, processors, writers | `batch-support`, the `*-db-support` modules it uses |
-| `batch-support` | job repository database, `JobService` | nothing in this project |
-| `*-db-support` | one business database: `DataSource` and transaction manager | nothing in this project |
+| `batch-core` | job repository database, `JobService` | nothing in this project |
+| `batch-db-<name>` | one business database: `<Name>DbConfig`, `<name>DataSource`, `<name>TransactionManager` | nothing in this project |
+| `batch-job-<name>` | jobs of one group: `<Name>JobGroup`, `<Name>JobGroupBootstrap`, readers, processors, writers | `batch-core`, the `batch-db-*` modules it uses |
+| `batch-launcher-<name>` | a way to start jobs: `<Name>LauncherApplication` | `batch-job-*` modules |
 
+- Packages are `com.example.batch.<role>.<name>` (e.g. `com.example.batch.db.main`). Property files and keys are `<role>-<name>.properties` / `<role>-<name>.*` (`core.*` for `batch-core`).
 - Job group modules never depend on each other.
-- Spring Boot appears only in `admin-cli`.
+- Spring Boot appears only in `batch-launcher-cli`.
 - The Spring Boot version is set once in `gradle/libs.versions.toml`; shared dependencies are declared once in `buildSrc`. Module build files never contain versions.
 
 ## Adding a job
@@ -23,7 +26,7 @@ If a task needs one of these rules to change, ask the maintainer before changing
 3. If the job writes to a business database, follow "Restart safety" below.
 4. Add a test that runs the job through the group's `*JobGroupBootstrap` and checks the rows it wrote.
 
-A new business database gets its own `*-db-support` module, imported by the `*JobGroup` of every group that uses it.
+A new business database gets its own `batch-db-*` module, imported by the `*JobGroup` of every group that uses it.
 
 ## Two databases
 
