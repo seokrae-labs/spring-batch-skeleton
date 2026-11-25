@@ -210,6 +210,56 @@ java -jar batch-launcher-cli/build/libs/batch-launcher-cli-0.1.0.jar --job.name=
 | 1 | 그 밖의 종료 상태, 등록되지 않은 잡 이름 | 그 밖의 종료 상태, 필수 파라미터 누락이나 잘못된 인자 같은 예외 |
 | 2 | 잡 구성 클래스를 찾지 못함 | 잡 이름이 없거나 등록되지 않은 이름 |
 
+## 템플릿으로 시작한 뒤 할 일
+
+**1. 패키지와 group 바꾸기**
+
+아래 명령은 `com.example.batch`를 새 패키지로 바꾸고 소스 폴더를 옮깁니다. bash에서 저장소 루트에서 실행하고, 실행 전에 작업 내용을 커밋해 두세요.
+
+```bash
+NEW=com.acme.settlement
+NEW_DIR=$(echo "$NEW" | tr . /)
+git grep -lz 'com\.example\.batch' | xargs -0 perl -pi -e "s/com\\.example\\.batch/$NEW/g"
+for d in */src/*/java/com/example/batch; do
+  base=${d%/com/example/batch}
+  mkdir -p "$base/$NEW_DIR"
+  git mv "$d"/* "$base/$NEW_DIR"/
+done
+find */src -type d -empty -delete
+./gradlew build
+```
+
+`buildSrc`의 `group`과 README의 실행 명령도 함께 바뀝니다.
+
+**2. 이름과 라이선스**
+
+- [ ] `settings.gradle`의 `rootProject.name`을 프로젝트 이름으로 바꿉니다.
+- [ ] `LICENSE`의 저작권자를 바꾸거나, 프로젝트에 맞는 라이선스로 교체합니다.
+- [ ] README를 이 프로젝트의 설명으로 바꿉니다.
+
+**3. 샘플 정리**
+
+- [ ] `batch-job-sample`을 실제 잡 그룹 이름(`batch-job-<이름>`)으로 바꾸거나 지웁니다. 함께 바꿀 곳은 `settings.gradle`, `batch-launcher-cli/build.gradle`의 의존성, `CliLauncherApplication`의 `@Import`입니다.
+- [ ] `batch-db-main`을 실제 업무 DB 이름(`batch-db-<이름>`)으로 바꿉니다. 함께 바꿀 곳은 `MainDbConfig`, 빈 이름(`mainDataSource`, `mainTransactionManager`), `db-main.*` 키입니다.
+- [ ] `db-main-schema-local.sql`의 샘플 테이블을 지우거나 실제 테이블로 바꿉니다.
+
+**4. 운영 환경**
+
+- [ ] 아래 "운영 DB로 바꿀 때"를 따라 드라이버, 스키마 초기화, 접속 정보를 설정합니다.
+- [ ] 실행 서버에 JDK 25 이상을 준비합니다.
+
+**5. GitHub 저장소 설정**
+
+템플릿으로 만든 저장소에는 파일만 복사되고 저장소 설정은 복사되지 않습니다. 필요하면 다시 설정하세요.
+
+- [ ] Dependabot 보안 업데이트, Secret scanning
+- [ ] `main` 브랜치 보호 규칙 (CI `build` 통과 필수, force push 금지)
+
+**6. AI 코딩 에이전트**
+
+- [ ] Claude Code를 쓰면 `jq`를 설치합니다(`check-java.sh`가 사용).
+- [ ] `AGENTS.md`를 프로젝트 규칙에 맞게 고칩니다.
+
 ## 설정
 
 | 파일 | 모듈 | 내용 |
