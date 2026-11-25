@@ -1,73 +1,52 @@
 # AGENTS.md
 
-Guide for coding agents working in this repository. Read `README.md` for the design background.
-If a task seems to require breaking a rule below, stop and ask the maintainer first.
+Project rules for coding agents. `README.md` explains the design behind them.
+If a task needs one of these rules to change, ask the maintainer before changing code.
 
-## Where code goes
+## Modules
 
-| You are adding | Put it in |
-|---|---|
-| Job, step, reader, processor, writer | the job group module it belongs to (`*-job-group`) |
-| Connection settings for a business database | a `*-db-support` module, one per database |
-| Something every job needs (job repository, launching) | `batch-support` |
-| A way to start jobs (CLI, HTTP) | `admin-cli` or a new launcher module |
+| Module | Holds | May depend on |
+|---|---|---|
+| `admin-cli` | Spring Boot launcher (`JobLaunchingRunner`) | job group modules |
+| `*-job-group` | jobs of one group and their readers, processors, writers | `batch-support`, the `*-db-support` modules it uses |
+| `batch-support` | job repository database, `JobService` | nothing in this project |
+| `*-db-support` | one business database: `DataSource` and transaction manager | nothing in this project |
 
-- Modules depend downward only: launcher → job group → `batch-support` / `*-db-support`.
-- A job group never depends on another job group. Spring Boot is used by launcher modules only.
-- `batch-support` knows nothing about business databases.
-- Versions live in `gradle.properties` (Spring Boot) and `buildSrc` (shared dependencies). Do not write versions in module build files.
-- Use `api` only for dependencies that callers must see; everything else is `implementation`.
+- Job group modules never depend on each other.
+- Spring Boot appears only in `admin-cli`.
+- The Spring Boot version is set once in `gradle.properties`; shared dependencies are declared once in `buildSrc`.
 
-## Registering jobs
+## Adding a job
 
-- One `@Configuration` class per job, with the job name as a `public static final` constant.
-- Add the class to the group's `*JobGroup` `@Import` list. Never rely on component scanning for jobs.
-- The group's `*JobGroup` also imports the `*-db-support` configuration it uses.
-- Declare required job parameters with `DefaultJobParametersValidator`.
-- Job parameters carry per-run values only. Per-environment values go in the module's `.properties` file.
+1. Create `XxxJobConfig` in the job group it belongs to.
+2. Add it to that group's `*JobGroup` `@Import` list. Jobs are not discovered by component scanning.
+3. If the job writes to a business database, follow "Restart safety" below.
+4. Add a test that runs the job through the group's `*JobGroupBootstrap` and checks the rows it wrote.
 
-## Writing steps
+A new business database gets its own `*-db-support` module, imported by the `*JobGroup` of every group that uses it.
 
-- Inject beans through constructors. Field and setter injection are not allowed outside tests.
-- Inject `DataSource` and `PlatformTransactionManager` with `@Qualifier` whenever more than one bean of that type exists, which is the case in every group that uses a business database.
-- A step that writes to a business database must call `.transactionManager(...)` with that database's manager. Without it, Spring Batch silently uses a non-transactional one.
-- `@StepScope` / `@JobScope` bean methods return the concrete class (e.g. `FlatFileItemReader<T>`), not the interface.
-- Non-bean factory methods start with `build`.
-- Keep conversion, filtering and validation in an `ItemProcessor` and test it on its own.
-- Prefer Spring Batch's readers and writers over hand-written ones. Never collect a whole input into memory.
-- SQL lives in a `*Sql` constants class and uses named parameters.
+## Two databases
 
-## Restart safety (important)
+Every group that uses a business database has two `DataSource` beans (`jobMetaDataSource`, `mainDataSource`) and two transaction managers. Always inject them by name with `@Qualifier`.
 
-The job repository and the business database are different databases, so a chunk's metadata is committed before its business data. If the process dies between the two commits and the reader saved its position, a restart skips that chunk.
+A step that writes to the business database must set `.transactionManager(...)` to that database's manager. If it is left out, the step runs without a transaction and nothing reports it.
 
-So every step that writes to a business database must be safe to rerun from the beginning:
+## Restart safety
+
+Job metadata is committed to the job repository before the chunk's business data is committed. If the process dies between those commits and the reader saved its position, a restart skips that chunk.
+
+Steps that write to a business database are therefore rerun from the start on restart:
 
 - the reader uses `saveState(false)`;
-- the job first clears what it is about to write, in a step with `allowStartIfComplete(true)`, or the writer is idempotent (upsert).
+- the job first removes what it is about to write, in a step with `allowStartIfComplete(true)` (see `clearTargetDateStep`), or the writer is an upsert.
 
-Ask before changing either of these.
-
-## Ask, do not guess
-
-Ask the maintainer when any of these is not given:
-
-- chunk size;
-- which exceptions to skip, the skip limit, and the retry policy;
-- input file encoding and delimiter;
-- cursor or paging reader for a database query.
-
-Do not work around `JobInstanceAlreadyCompleteException` by changing parameters or deleting metadata. Report it instead. Never edit job repository tables by hand.
+`SampleJobTest` proves this behaviour. Keep an equivalent restart test for every such job.
 
 ## Tests
 
-- JUnit Jupiter and AssertJ. Every test method has a `@DisplayName` that states the expected behaviour.
-- Cover failure paths and boundary values, not only the happy path.
-- Job tests load the group's `*JobGroupBootstrap` with `@SpringJUnitConfig` and build parameters from `JobOperatorTestUtils.getUniqueJobParametersBuilder()`.
-- Assert on the data the job wrote, not only on `BatchStatus.COMPLETED`.
-- A step that must survive restarts gets a test that fails it on purpose and restarts it with the same parameters.
-- In `@SpringBatchTest` classes, do not add helper methods that return `JobExecution` or `StepExecution`; the test listeners call such methods with no arguments.
+- `scripts/check-java.sh` rejects `@Autowired`, `@Inject` and `@Resource` in main code (use constructor injection) and test methods without `@DisplayName`.
+- In `@SpringBatchTest` classes, do not write helper methods that return `JobExecution` or `StepExecution`. The test listeners mistake them for execution factories and call them with no arguments.
 
 ## Checks
 
-Claude Code runs `scripts/check-java.sh` after each file edit and `scripts/run-tests.sh` before finishing. When a check fails, fix the cause. Do not disable or bypass the checks.
+Claude Code runs `scripts/check-java.sh` after each edit and `scripts/run-tests.sh` before finishing. Fix what they report; do not disable them.
